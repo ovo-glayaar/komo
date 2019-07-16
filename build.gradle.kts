@@ -30,8 +30,6 @@ dependencies {
     // Use the Kotlin JUnit integration.
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
 
-    implementation("com.google.code.gson:gson:2.7")
-
     implementation("io.ktor:ktor-server-core:$ktor_version")
     implementation("io.ktor:ktor-server-netty:$ktor_version")
     //Add logging support
@@ -39,11 +37,13 @@ dependencies {
 
     implementation("org.jetbrains.exposed:exposed:0.12.1")
     // H2 in-memory database
-    implementation("com.h2database:h2:1.4.191")
+    implementation("org.postgresql:postgresql:42.2.6")
     // Exposed depends on Joda-time so include it
     implementation("joda-time:joda-time:2.9.2")
 
     implementation("io.ktor:ktor-freemarker:$ktor_version")
+
+    implementation("com.google.code.gson:gson:2.7")
 
 }
 

@@ -1,9 +1,9 @@
 package com.komo
 
-import com.komo.Apis
-import com.komo.Users
 import com.komo.model.Api
+import com.komo.model.ApiResponse
 import com.komo.model.User
+import com.komo.model.UserToken
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -11,113 +11,100 @@ class DAOFacadeDatabase(val db: Database): DAOFacade {
 
     override fun init() = transaction(db) {
         SchemaUtils.create(Users)
-
-        //Initial data
-        /*
-        val employees = listOf(Employee(1, "Owlette","owlette@techstack.net", "New York"),
-                Employee(2, "Catboy","catboy@techstack.net", "New York"),
-                Employee(3, "Grekko","grekko@techstack.net", "New York"))
-        Employees.batchInsert(employees){ employee ->
-            this[Employees.id] = employee.id
-            this[Employees.name] = employee.name
-            this[Employees.email] = employee.email
-            this[Employees.city] = employee.city
-        }
-        */
         SchemaUtils.create(Apis)
     }
 
     //Users
-    override fun createUser(user: User) = transaction(db) {
-        Users.insert {it[Users.id] = user.id;
-            it[Users.username] = user.username;
-            it[Users.password] = user.password;
-            it[Users.name] = user.name;
-            it[Users.userToken] = user.userToken;
-            it[Users.userApiState] = user.userApiState;
+    override fun createUser(username: String, password: String, name: String, apiStates: List<Int>) = transaction(db) {
+        User.new {
+            this.username = username
+            this.password = password
+            this.name = name
+
+            val apiStates = apiStates.map { getApiResponse(it) }.filterNotNull().toList()
+            this.apiStates = SizedCollection(apiStates)
         }
+
         Unit
     }
-    override fun updateUser(user: User) = transaction(db) {
-        Users.update({Users.id eq user.id}){
-            it[Users.username] = user.username;
-            it[Users.password] = user.password;
-            it[Users.name] = user.name;
-            it[Users.userToken] = user.userToken;
-            it[Users.userApiState] = user.userApiState;
+    override fun updateUser(id: Int, username: String, password: String, name: String, token: String, apiStates: List<Int>) = transaction(db) {
+
+        User.findById(id)?.apply {
+            this.username = username
+            this.password = password
+            this.name = name
+
+            val apiStates = apiStates.map { getApiResponse(it) }.filterNotNull().toList()
+            this.apiStates = SizedCollection(apiStates)
+        }?.also {
+            UserToken.new {
+                this.user = it
+                this.token = token
+            }
         }
+
         Unit
     }
 
-    override fun deleteUser(id: String) = transaction(db) {
+    override fun deleteUser(id: Int) = transaction(db) {
         Users.deleteWhere { Users.id eq id }
         Unit
     }
 
-    override fun getUser(id: String) = transaction(db) {
-        Users.select { Users.id eq id }.map {
-            User(it[Users.id], it[Users.username], it[Users.password],
-                 it[Users.name], it[Users.userToken],
-                 it[Users.userApiState])
-        }.singleOrNull()
+    override fun getUser(id: Int) = transaction(db) {
+        User.findById(id)
     }
 
     override fun getAllUsers() = transaction(db) {
-        Users.selectAll().map {
-            User(it[Users.id], it[Users.username], it[Users.password],
-                    it[Users.name], it[Users.userToken],
-                    it[Users.userApiState])
-        }
+        User.all().toList()
     }
 
     //Apis
-    override fun createApi(api: Api) = transaction(db) {
-        Apis.insert {it[Apis.id] = api.id;
-            it[Apis.name] = api.name;
-            it[Apis.responses] = api.responses;
+    override fun createApi(name: String, url: String, codeResponses: List<String>) = transaction(db) {
+        val newApi = Api.new {
+            this.name = name
+            this.url = url
+        }
+
+        codeResponses.forEach {
+            val responseComp = it.split("@#$")
+            ApiResponse.new {
+                api = newApi
+                code = responseComp[0]
+                type = responseComp[1]
+                response = responseComp[2]
+            }
         }
         Unit
     }
 
-    override fun updateApi(api: Api) = transaction(db) {
-        Apis.update({Apis.id eq api.id}) {
-            it[Apis.name] = api.name;
-            it[Apis.responses] = api.responses;
+    override fun updateApi(id: Int, name: String, url: String, codeResponses: List<String>) = transaction(db) {
+        Api.findById(id)?.apply {
+            this.name = name
+            this.url = url
         }
         Unit
     }
 
-    override fun deleteApi(id: String) = transaction(db) {
+    override fun deleteApi(id: Int) = transaction(db) {
         Apis.deleteWhere { Apis.id eq id }
         Unit
     }
 
-    override fun getApi(id: String): Api? = transaction(db) {
-        Apis.select { Apis.id eq id }.map {
-            Api(it[Apis.id], it[Apis.name], it[Apis.responses])
-        }.singleOrNull()
+    override fun getApi(id: Int): Api? = transaction(db) {
+        Api.findById(id)
     }
 
-    override fun getApiByCode(id: String, code: String): Api? = transaction(db) {
-        var apiResult = Apis.select { Apis.id eq id }.map {
-            Api(it[Apis.id], it[Apis.name], it[Apis.responses])
-        }.singleOrNull()
-
-        if(apiResult != null) {
-            apiResult.responses = apiResult.responses.asSequence().filter { it.code == code }.toList()
-
-            if(apiResult.responses.count() == 0) {
-                apiResult = null
-            }
-        }
-
-        apiResult
+    override fun getApiResponse(id: Int): ApiResponse? = transaction(db) {
+        ApiResponse.findById(id)
     }
 
     override fun getAllApis(): List<Api> = transaction(db) {
-        Apis.selectAll().map {
-            Api(it[Apis.id], it[Apis.name], it[Apis.responses])
-        }
+        Api.all().toList()
+    }
+
+    override fun getAllApiResponses(): List<ApiResponse> = transaction(db) {
+        ApiResponse.all().toList()
     }
 
     override fun close() { }

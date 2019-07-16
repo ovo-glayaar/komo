@@ -1,22 +1,24 @@
 package com.komo
 
-import org.jetbrains.exposed.dao.UUIDTable
+import com.komo.model.ApiResponse
+import org.jetbrains.exposed.dao.IntIdTable
 import org.jetbrains.exposed.sql.Table
 
-object Users: Table(){
-    val id = varchar("id",100).primaryKey()
+object Users: IntIdTable(){
     val username = varchar("username", 50)
     val password = varchar("password", 50)
     val name = varchar("name", 50)
-    val userToken = reference("userToken", UserTokens)
-    val userApiState = reference("userApiState", UserApiStates)
 }
 
-object UserApiStates: UUIDTable() {
-    val apiId = UserTokens.varchar("token", 250)
-    val responseCode = varchar("token", 250)
+object UserApiStates: Table() {
+
+    val user = reference("user", Users).primaryKey(0)
+    val apiResponse = reference("apiResponse", ApiResponses).primaryKey(1)
+
 }
 
-object UserTokens: UUIDTable() {
+object UserTokens: IntIdTable() {
+
+    val user = reference("userId", Users)
     val token = varchar("token", 250)
 }

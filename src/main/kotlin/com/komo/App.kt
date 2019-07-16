@@ -12,6 +12,8 @@ import io.ktor.features.ContentNegotiation
 import io.ktor.freemarker.FreeMarker
 import io.ktor.freemarker.FreeMarkerContent
 import io.ktor.http.Parameters
+import io.ktor.http.content.files
+import io.ktor.http.content.static
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.routing.get
@@ -29,22 +31,27 @@ class App {
         }
 }
 
-"mongodb+srv://glenn.layaar@ovo.id:UltraS3cur3!@cluster0-9tr6k.gcp.mongodb.net/test?retryWrites=true&w=majority"
-
-val dao = DAOFacadeDatabase(Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver"))
+val dao = DAOFacadeDatabase(Database.connect("jdbc:postgresql://john.db.elephantsql.com:5432/ehhtftpv",
+        driver = "org.postgresql.Driver", user = "ehhtftpv", password = "Q5FO8evgZ7RV_Jz708vpdwakG7sWSnhF"))
 
 fun main(args: Array<String>) {
     embeddedServer(Netty, port = 8080) {
         dao.init()
         install(FreeMarker) {
-            templateLoader = ClassTemplateLoader(this::class.java.classLoader, "templates")
+            templateLoader = ClassTemplateLoader(App::class.java.classLoader, "/main/resources/templates")
         }
+
         routing {
-            route("/") {
+            static("resources") {
+                files("resources")
+            }
+            route("/index") {
                 get {
-                    call.respond(FreeMarkerContent("index.ftl"))
+                    val params = mapOf("title" to "Main Page", "header" to "Main Page")
+                    call.respond(FreeMarkerContent("index.ftl", params, "e"))
                 }
             }
+            /*
             route("{path...}") {
                 get("/") {
                     val action = call.parameters.getAll("path")?.joinToString(separator = "/")
@@ -53,13 +60,14 @@ fun main(args: Array<String>) {
                     }
                 }
             }
+            */
             route("/users/edit") {
                 get {
                     val id = call.request.queryParameters["id"]
                     if (id != null) {
                         call.respond(FreeMarkerContent("user_edit.ftl",
-                                mapOf("user" to dao.getUser(id),
-                                        "apis" to dao.getAllApis())))
+                                mapOf("user" to dao.getUser(id.toInt()),
+                                      "apis" to dao.getAllApis())))
                     }
                 }
                 post {
@@ -67,18 +75,13 @@ fun main(args: Array<String>) {
                     val id = postParameters["id"]
                     if (id != null) {
 
-                        val userApiStates = postParameters.getAll("ApiState")?.map {
-                            val component = it.split(";").toTypedArray()
-                            UserApiState(component[0], component[1])
-                        }
-
-                        val updateUser = User(id, postParameters["username"].orEmpty(),
+                        dao.updateUser(id.toInt(),
+                                postParameters["username"].orEmpty(),
                                 postParameters["password"].orEmpty(),
                                 postParameters["name"].orEmpty(),
-                                UserToken(postParameters["token"].orEmpty()),
-                                userApiStates)
+                                "",
+                                postParameters.getAll("ApiState")?.map { it.toInt() }?.toList() ?: listOf())
 
-                        dao.updateUser(updateUser)
                     }
                     call.respond(FreeMarkerContent("users.ftl", mapOf("users" to dao.getAllUsers())))
                 }
@@ -91,20 +94,10 @@ fun main(args: Array<String>) {
                 post {
                     val postParameters: Parameters = call.receiveParameters()
 
-                    val id = "sadadaswd"//TODO: GenerateId
-
-                    val userApiStates = postParameters.getAll("ApiState")?.map {
-                        val component = it.split(";").toTypedArray()
-                        UserApiState(component[0], component[1])
-                    }
-
-                    val newUser = User(id, postParameters["username"].orEmpty(),
+                    dao.createUser(postParameters["username"].orEmpty(),
                             postParameters["password"].orEmpty(),
                             postParameters["name"].orEmpty(),
-                            UserToken(postParameters["token"].orEmpty()),
-                            userApiStates)
-
-                    dao.createUser(newUser)
+                            postParameters.getAll("ApiState")?.map { it.toInt() }?.toList() ?: listOf())
 
                     call.respond(FreeMarkerContent("users.ftl", mapOf("users" to dao.getAllUsers())))
                 }
@@ -113,7 +106,7 @@ fun main(args: Array<String>) {
                 get {
                     val id = call.request.queryParameters["id"]
                     if (id != null) {
-                        dao.deleteUser(id)
+                        dao.deleteUser(id.toInt())
                         call.respond(FreeMarkerContent("users.ftl", mapOf("users" to dao.getAllUsers())))
                     }
                 }
@@ -128,45 +121,30 @@ fun main(args: Array<String>) {
                     val id = call.request.queryParameters["id"]
                     if (id != null) {
                         call.respond(FreeMarkerContent("api_edit.ftl",
-                                mapOf("api" to dao.getApi(id))))
+                                mapOf("api" to dao.getApi(id.toInt()))))
                     }
                 }
                 post {
                     val postParameters: Parameters = call.receiveParameters()
                     val id = postParameters["id"]
                     if (id != null) {
-
-                        val apiResponses = postParameters.getAll("apiResponse").map {
-                            val component = it.split("#@$#").toTypedArray()
-                            ApiResponse(component[0], component[1])
-                        }
-
-                        val updateApi = Api(id, postParameters["name"].orEmpty(),
-                                apiResponses)
-
-                        dao.updateApi(updateApi)
+                        dao.updateApi(id.toInt(),
+                                postParameters["name"].orEmpty(),
+                                postParameters["url"].orEmpty(),
+                                postParameters.getAll("apiResponse") ?: listOf())
                     }
                     call.respond(FreeMarkerContent("apis.ftl", mapOf("apis" to dao.getAllApis())))
                 }
             }
             route("/apis/new") {
                 get {
-                    call.respond(FreeMarkerContent("api_edit.ftl"))
+                    call.respond(FreeMarkerContent("api_edit.ftl", null))
                 }
                 post {
                     val postParameters: Parameters = call.receiveParameters()
-
-                    val id = "sadadaswd"//TODO: GenerateId
-
-                    val apiResponses = postParameters.getAll("ApiResponse").map {
-                        val component = it.split("#@$#").toTypedArray()
-                        ApiResponse(component[0], component[1])
-                    }
-
-                    val newApi = Api(id, postParameters["name"].orEmpty(),
-                            apiResponses)
-
-                    dao.createApi(newApi)
+                    dao.createApi(postParameters["name"].orEmpty(),
+                            postParameters["url"].orEmpty(),
+                            postParameters.getAll("apiResponse") ?: listOf())
 
                     call.respond(FreeMarkerContent("apis.ftl", mapOf("apis" to dao.getAllApis())))
                 }
@@ -175,7 +153,7 @@ fun main(args: Array<String>) {
                 get {
                     val id = call.request.queryParameters["id"]
                     if (id != null) {
-                        dao.deleteApi(id)
+                        dao.deleteApi(id.toInt())
                         call.respond(FreeMarkerContent("apis.ftl", mapOf("apis" to dao.getAllApis())))
                     }
                 }

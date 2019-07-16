@@ -1,13 +1,18 @@
 package com.komo
 
-import org.jetbrains.exposed.dao.UUIDTable
+import org.jetbrains.exposed.dao.IntIdTable
 
-object Apis: UUIDTable(){
+object Apis: IntIdTable(){
     val name = varchar("name", 50)
-    val responses = reference("responses", ApiResponses)
+    val url = varchar("url", 500)
 }
 
-object ApiResponses: UUIDTable() {
-    val code = varchar("code", 50)
+object ApiResponses: IntIdTable() {
+
+    val api = reference("api", Apis)
+
+    val code = varchar("code", 5)
+    val type = varchar("type", 25)
     val response = varchar("response", 250000)
+
 }
