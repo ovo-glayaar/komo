@@ -11,11 +11,14 @@ import io.ktor.features.CallLogging
 import io.ktor.features.ContentNegotiation
 import io.ktor.freemarker.FreeMarker
 import io.ktor.freemarker.FreeMarkerContent
+import io.ktor.http.ContentType
 import io.ktor.http.Parameters
+import io.ktor.http.content.TextContent
 import io.ktor.http.content.files
 import io.ktor.http.content.static
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
+import io.ktor.response.respondText
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
@@ -37,30 +40,20 @@ val dao = DAOFacadeDatabase(Database.connect("jdbc:postgresql://john.db.elephant
 fun main(args: Array<String>) {
     embeddedServer(Netty, port = 8080) {
         dao.init()
+
         install(FreeMarker) {
-            templateLoader = ClassTemplateLoader(App::class.java.classLoader, "/main/resources/templates")
+            templateLoader = ClassTemplateLoader(this::class.java.classLoader, "templates")
         }
 
         routing {
-            static("resources") {
-                files("resources")
-            }
-            route("/index") {
+
+            route("/") {
                 get {
                     val params = mapOf("title" to "Main Page", "header" to "Main Page")
-                    call.respond(FreeMarkerContent("index.ftl", params, "e"))
+                    call.respond(FreeMarkerContent("index.ftl", params, ""))
+                    //call.respondText("HELLO WORLD")
                 }
             }
-            /*
-            route("{path...}") {
-                get("/") {
-                    val action = call.parameters.getAll("path")?.joinToString(separator = "/")
-                    if(action != null) {
-                        //TODO: implement logic
-                    }
-                }
-            }
-            */
             route("/users/edit") {
                 get {
                     val id = call.request.queryParameters["id"]
@@ -163,6 +156,21 @@ fun main(args: Array<String>) {
                     call.respond(FreeMarkerContent("apis.ftl", mapOf("apis" to dao.getAllApis())))
                 }
             }
+
+            route("{path...}") {
+                get("/") {
+                    val action = call.parameters.getAll("path")?.joinToString(separator = "/")
+                    if(action != null) {
+
+                        val token = call.request.headers.get("Authorization")
+                        val sessionId = call.request.headers.get("cs-session-id")
+                        //dao.getApiByUrl(action)
+                        //TODO: implement logic
+                        call.respond(TextContent("{\"action\": \"$action\"}", ContentType.Application.Json))
+                    }
+                }
+            }
+
         }
 
         Unit
