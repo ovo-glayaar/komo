@@ -9,7 +9,7 @@ object Apis: IntIdTable(){
 
 object ApiResponses: IntIdTable() {
 
-    val api = reference("api", Apis)
+    val api = reference("apiid", Apis)
 
     val code = varchar("code", 5)
     val type = varchar("type", 25)

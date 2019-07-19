@@ -162,11 +162,14 @@ fun main(args: Array<String>) {
                     val action = call.parameters.getAll("path")?.joinToString(separator = "/")
                     if(action != null) {
 
-                        val token = call.request.headers.get("Authorization")
-                        val sessionId = call.request.headers.get("cs-session-id")
-                        //dao.getApiByUrl(action)
+                        //val token = call.request.headers.get("Authorization").orEmpty()
+                        val token = "user_a||123456||02"
+                        val sessionId = call.request.headers.get("cs-session-id").orEmpty()
+
+
+                        val response = dao.getResponseByUser(token, action).orEmpty()
                         //TODO: implement logic
-                        call.respond(TextContent("{\"action\": \"$action\"}", ContentType.Application.Json))
+                        call.respond(TextContent(response, ContentType.Application.Json))
                     }
                 }
             }

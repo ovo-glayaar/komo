@@ -49,12 +49,13 @@ class DAOFacadeDatabase(val db: Database): DAOFacade {
     fun getResponseByUser(token: String, url: String): String? =  transaction(db) {
         val result = Users.join(UserTokens, JoinType.INNER, additionalConstraint = {Users.id eq UserTokens.user})
             .join(UserApiStates, JoinType.INNER, additionalConstraint = {Users.id eq UserApiStates.user})
-            .join(ApiResponses, JoinType.INNER, additionalConstraint = {UserApiStates.apiResponse eq ApiResponses.id})
+            .join(ApiResponses, JoinType.INNER, additionalConstraint = {UserApiStates.apiresponse eq ApiResponses.id})
             .join(Apis, JoinType.INNER, additionalConstraint = {ApiResponses.api eq Apis.id})
             .slice(UserTokens.token, Apis.url, ApiResponses.response)
             .select { UserTokens.token eq token and (Apis.url eq url) }.firstOrNull()
 
         if(result != null) result[ApiResponses.response] else null
+
     }
 
     override fun deleteUser(id: Int) = transaction(db) {

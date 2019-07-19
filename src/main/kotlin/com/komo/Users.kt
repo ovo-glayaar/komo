@@ -12,13 +12,13 @@ object Users: IntIdTable(){
 
 object UserApiStates: Table() {
 
-    val user = reference("user", Users).primaryKey(0)
-    val apiResponse = reference("apiResponse", ApiResponses).primaryKey(1)
+    val user = reference("userid", Users).primaryKey(0)
+    val apiresponse = reference("apiresponseid", ApiResponses).primaryKey(1)
 
 }
 
 object UserTokens: IntIdTable() {
 
-    val user = reference("userId", Users)
+    val user = reference("userid", Users)
     val token = varchar("token", 250)
 }
